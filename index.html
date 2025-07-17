@@ -1,0 +1,640 @@
+<html lang="en">
+<head>
+    <link rel="icon" type="image/x-icon" href="./favicon.ico" />
+    <!-- CDN for jQuery and select2 -->
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"
+            integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+            crossorigin="anonymous"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.7/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.7/js/select2.min.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UltraBox</title>
+    <meta name="application-name" content="UltraBox" />
+    <meta name="apple-mobile-web-app-title" content="UltraBox">
+    <meta name="description" content="UltraBox is a mod of BeepBox that aims to combine every other beepmod into one." />
+    <meta name="keywords" content="chiptune, instrumental, music, song, melody, composition, tool, free, online, square wave, NES, NSF, ultrabox, beepbox, jummbox, pandorasbox, modbox, sandbox, goldbox, wackybox, todbox" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#CCCCCC"/>
+    <meta name="msapplication-TileColor" content="#dba600" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta property="og:image" content="/icon_maskable_192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link href="https://fonts.googleapis.com/css?family=B612" rel="stylesheet" media="none" onload="if (this.media != 'all') this.media='all';" /> <!-- this is a trick to load CSS asynchronously. -->
+    <style type="text/css">
+        /* Flashing image container */
+        #flashing-images {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            display: none;
+        }
+        
+        .flash-image {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        
+        .flash-image.active {
+            opacity: 1;
+        }
+        
+        @keyframes flash {
+            0% { 
+                opacity: 0;
+                transform: scale(0.5) rotate(0deg);
+            }
+            50% { 
+                opacity: 1;
+                transform: scale(1.5) rotate(180deg);
+            }
+            100% { 
+                opacity: 0;
+                transform: scale(2) rotate(360deg);
+            }
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes wiggle {
+            0% { transform: rotate(-1deg); }
+            50% { transform: rotate(1deg); }
+            100% { transform: rotate(-1deg); }
+        }
+        
+        @keyframes rainbow {
+            0% { color: #ff0000; filter: hue-rotate(0deg); }
+            16% { color: #ff8000; filter: hue-rotate(60deg); }
+            33% { color: #ffff00; filter: hue-rotate(120deg); }
+            50% { color: #00ff00; filter: hue-rotate(180deg); }
+            66% { color: #0080ff; filter: hue-rotate(240deg); }
+            83% { color: #8000ff; filter: hue-rotate(300deg); }
+            100% { color: #ff0000; filter: hue-rotate(360deg); }
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        :root {
+            --page-margin: #000;
+            --editor-background: #111;
+            --primary-text: #0f0;
+            --mod-title: #ff0;
+            --link-accent: #0ff;
+        }
+
+        html {
+            background: var(--page-margin, black);
+            overflow-x: hidden;
+            font-size: large;
+            font-family: 'Comic Sans MS', cursive;
+            line-height: 1.3;
+            color: var(--primary-text, #0f0);
+            text-shadow: 0 0 5px currentColor, 0 0 10px currentColor;
+            background: repeating-linear-gradient(
+                45deg,
+                #000 0px,
+                #000 10px,
+                #001100 10px,
+                #001100 20px
+            );
+            background-attachment: fixed;
+        }
+
+        body {
+            margin: auto;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            align-content: center;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 255, 0, 0.03) 0px,
+                rgba(0, 255, 0, 0.03) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            animation: wiggle 3s infinite;
+        }
+
+        #beepboxEditorContainer {
+            min-height: 645px;
+            overflow: auto;
+            background: var(--editor-background, #111);
+            width: 100%;
+			max-width: 710px;
+            padding-left: 30px;
+            padding-right: 30px;
+            border: 3px dashed #f0f;
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.5), inset 0 0 20px rgba(0, 255, 0, 0.2);
+            border-radius: 20px;
+            transform: rotate(-0.5deg);
+            transition: transform 0.3s ease;
+        }
+        
+        #beepboxEditorContainer:hover {
+            transform: rotate(0.5deg) scale(1.02);
+        }
+
+        #text-content {
+            overflow: auto;
+            background: var(--editor-background, #111);
+            width: 100%;
+			max-width: 710px;
+            padding-left: 30px;
+            padding-right: 30px;
+            border: 3px dotted #0ff;
+            border-top: none;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(255, 0, 255, 0.2);
+            border-radius: 0 0 20px 20px;
+            transform: rotate(0.7deg);
+            animation: wiggle 3s infinite;
+        }
+
+        #Hotdog { display: none; }
+
+        h1 {
+            font-size: 2rem;
+            text-align: center;
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+            -webkit-text-stroke-width: 2px;
+            -webkit-text-stroke-color: #f0f;
+            color: var(--mod-title, #ff0);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            animation: rainbow 3s infinite, bounce 2s infinite;
+            text-shadow: 3px 3px 0 #f0f, -3px -3px 0 #0ff;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            text-align: center;
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+            -webkit-text-stroke-width: 1px;
+            -webkit-text-stroke-color: #0ff;
+            color: var(--primary-text, #0f0);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            animation: spin 4s linear infinite;
+            text-shadow: 2px 2px 0 #f0f;
+        }
+
+        .centerDiv {
+			margin: 0px auto;
+		}
+
+        a {
+            color: var(--link-accent, #0ff);
+            text-decoration: none;
+            border-bottom: 2px wavy #f0f;
+            background: linear-gradient(90deg, transparent, rgba(255, 0, 255, 0.3), transparent);
+            padding: 2px 4px;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        a:hover {
+            background: rgba(255, 0, 255, 0.5);
+            transform: scale(1.1) rotate(-5deg);
+            box-shadow: 0 0 10px #f0f;
+        }
+
+        /* wide screen */
+		@media (min-width: 711px) {
+            html {
+                width: 100%;
+            }
+
+            body {
+                width: 100%;
+            }
+
+            .column-container {
+				width: 710px;
+                display: flex;
+				gap: 25px;
+            }
+
+            .instructions-column {
+				min-width: 0;
+            }
+
+            .bsky-column {
+				width: 300px;
+				flex-shrink: 0;
+			}
+        }
+
+        /* narrow screen */
+		@media (max-width: 710px) {
+            body {
+                width: 100%;
+            }
+
+            p, .donation {
+                margin: 1em 0.5em;
+            }
+
+            .column-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+        
+        section p {
+            animation: blink 3s infinite;
+            animation-delay: calc(var(--i, 0) * 0.5s);
+        }
+        
+        section p:nth-child(2) { --i: 1; }
+        section p:nth-child(3) { --i: 2; }
+        section p:nth-child(4) { --i: 3; }
+        
+        ul li {
+            animation: bounce 2s infinite;
+            animation-delay: calc(var(--i, 0) * 0.2s);
+        }
+        
+        ul li:nth-child(1) { --i: 1; }
+        ul li:nth-child(2) { --i: 2; }
+        ul li:nth-child(3) { --i: 3; }
+        ul li:nth-child(4) { --i: 4; }
+        ul li:nth-child(5) { --i: 5; }
+        ul li:nth-child(6) { --i: 6; }
+        ul li:nth-child(7) { --i: 7; }
+        ul li:nth-child(8) { --i: 8; }
+    </style>
+</head>
+<body id="secondImage">
+    <!-- Add flashing images container -->
+    <div id="flashing-images"></div>
+    
+    <script>
+        const image = localStorage.getItem('customTheme2');
+        const el  = document.getElementById('secondImage');
+
+        if (image != null && image !== "null" && image !== "undefined") {
+            el.style.backgroundImage="url(" + image + ")";
+            el.style.backgroundRepeat= "repeat";
+        }
+        
+        // Add some random emojis that float around
+        setInterval(() => {
+            const emoji = ['🤪', '🎵', '🎶', '🎸', '🥁', '🎹', '🔥', '💥', '✨', '🌟'];
+            const randomEmoji = emoji[Math.floor(Math.random() * emoji.length)];
+            const floating = document.createElement('div');
+            floating.textContent = randomEmoji;
+            floating.style.position = 'fixed';
+            floating.style.left = Math.random() * 100 + 'vw';
+            floating.style.top = '-50px';
+            floating.style.fontSize = '2rem';
+            floating.style.pointerEvents = 'none';
+            floating.style.zIndex = '1000';
+            floating.style.animation = 'bounce 3s linear forwards';
+            document.body.appendChild(floating);
+            setTimeout(() => floating.remove(), 3000);
+        }, 2000);
+
+        // Flashing images functionality
+        const images = [
+            '/a9ffeb5d3aaae5c583e244a6e55b34fe1222a33e.jpg',
+            '/decc10a7b4beb2809b95b6a5d0090e78.jpeg',
+            '/4f292843005032862bd4f679f66ab6ab.jpeg',
+            '/sample_edcc4456da7fcd7df3801cada65305c2.jpg'
+        ];
+        
+        const container = document.getElementById('flashing-images');
+        let currentImg = null;
+        
+        function flashImage() {
+            container.style.display = 'block';
+            
+            if (currentImg) {
+                currentImg.remove();
+            }
+            
+            const img = document.createElement('img');
+            img.className = 'flash-image';
+            img.src = images[Math.floor(Math.random() * images.length)];
+            container.appendChild(img);
+            
+            currentImg = img;
+            
+            // Fade in
+            setTimeout(() => {
+                img.classList.add('active');
+            }, 50);
+            
+            // Fade out after 2 seconds
+            setTimeout(() => {
+                img.classList.remove('active');
+                setTimeout(() => {
+                    container.style.display = 'none';
+                    if (currentImg) {
+                        currentImg.remove();
+                        currentImg = null;
+                    }
+                }, 500);
+            }, 500);
+        }
+        
+        // Flash every 10 seconds
+        setInterval(flashImage, 10000);
+
+        // Random fart sound
+        const fartSound = new Audio('/fartSound33.mp3');
+        function playRandomFart() {
+            fartSound.currentTime = 0;
+            fartSound.play().catch(() => {});
+        }
+        setInterval(playRandomFart, 1000);
+    </script>
+    <div id="beepboxEditorContainer">
+        <noscript>
+            Sorry, UltraBox requires a JavaScript-enabled browser.
+        </noscript>
+    </div>
+    <div id="text-content">
+        <section>
+
+            <h1>
+                <font>我吮吸鸡巴</font>
+                <span id="goldboxPlant" style="display: inline; color:#62a13b"></span>
+            </h1>
+            
+            <p id="introduction">
+                Trapbox is a mod first envisioned by Neptendo and made possible by contributing community members (see <a href="./credits.html">credits</a>).<br>
+                It takes elements from most of the beepbox mods available and puts them in one convenient package.
+            </p>
+            <!-- <p>
+                All song data is contained in the URL at the top of your browser.
+                When you make changes to the song, the URL is updated to reflect your changes.
+                When you are satisfied with your song, just copy and paste the URL to save and share your song!
+            </p> -->
+            <p>
+                If you have any questions, please visit the <a href="./faq.html">FAQ</a>. Visit the <a href="./patch_notes.html">patch notes</a> to see the latest changes made.
+                <img id="Hotdog" src="" width="500" height="333" onclick="changeHotdogSize()" />
+            </p>
+            <!--
+    <div class="donation">
+        BeepBox is a passion project, and will always be free to use. If you find it valuable and have the means, any gratuity via
+        <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_blank">
+            <input type="hidden" name="cmd" value="_donations" />
+            <input type="hidden" name="business" value="QZJTX9GRYEV9N" />
+            <input type="hidden" name="currency_code" value="USD" />
+            <input type="submit" name="submit" value="Paypal"/>
+        </form>
+        would be appreciated!
+    </div>
+    -->
+        </section>
+
+        <div class="column-container">
+            <main class="instructions-column">
+                <section>
+                    <h2>
+                        Instructions 🪨🍖
+                    </h2>
+                    <p>
+                        UG UG UG! 🔥🔥 *bangs rocks together* UGH! 💥
+                    </p>
+                    <p>
+                        OOH OOH AAH AAH! 🐒 *grunts* UGH UGH! 🤪
+                    </p>
+                    <p>
+                        GRR GRR! 🐻 *caveman noises* OOH OOH! 🤘
+                    </p>
+                    <p>
+                        UG UG! 🪵 *hits stick* AAH AAH! 🎯
+                    </p>
+                    <p>
+                        *caveman intensifies* 🦕 UG OOH AAH GRR! 🤯
+                    </p>
+                    <p>
+                        *more caveman sounds* 😵 UGH! OOH OOH! 🥳
+                    </p>
+                    <p>
+                        *caveman dance* 💃 UG UG UG! 🕺
+                    </p>
+                    <p>
+                        Notes go into patterns 🎵 and you edit one pattern at a time 🎹
+                        Those numbered boxes 📦 at the bottom let you switch patterns 🔄
+                        <span id="bar-editing">
+                            Click the boxes 🎯 to move around or swap patterns 🎲
+                        </span>
+                    </p>
+                    <p>
+                        Trapbox can play many rows 🏗️ at once - each row has its own patterns 🎼
+                        Most rows play melodies 🎶 but the bottom row is for drums 🥁
+                    </p>
+                    <p>
+                        All song data lives in the URL 🔗 at the top!
+                        When you change stuff 🎨 the URL updates automatically 🔄
+                        Copy the URL to save and share your song! 📤
+                    </p>
+
+                    <div id="keyboard-instructions">
+                        <p>
+                            Keyboard shortcuts when Trapbox has focus: ⌨️<br />
+                        </p>
+                        <ul>
+                            <li><b>Spacebar</b>: play/pause ▶️⏸️</li>
+                            <li><b>Shift Spacebar</b>: play from mouse 🖱️</li>
+							<li><b>Z</b>: undo ↩️, <b>Y or Shift Z</b>: redo ↪️</li>
+                            <li><b>C</b>: copy pattern 📋</li>
+                            <li><b>V</b>: paste pattern 📥</li>
+                            <li><b>0-9</b>: assign pattern number 🔢</li>
+							<li><b>Arrows</b>: move selection 🎯</li>
+							<li><b>Ctrl + Arrows</b>: rearrange channels 🔄</li>
+							<li><b>[ ]</b>: move playhead ⏪⏩</li>
+							<li><b>F/H</b>: first/highlighted pattern 🌟</li>
+							<li><b>Shift & Drag</b>: select part of pattern ✋</li>
+							<li>Check edit menu for more shortcuts! 🍔</li>
+                        </ul>
+                    </div>
+                    <p>
+                        In the pattern editor 🎹 click and drag notes to change length 📏
+                        Click above/below notes to add chords 🎼🎼
+                    </p>
+                    <div id="mobile-instructions" style="display: none;">
+						<p>
+							Long-press 📱 in pattern editor to select time range ⏰ then drag to move notes! 🎵
+						</p>
+					</div>
+                    <p>
+                        ADVANCED: Drag up/down from notes to bend pitch ↕️ or change volume 🔊
+                        Hold Control for fine volume adjustment! 🎚️
+                    </p>
+                    <p>
+                        ADVANCED: Select with mouse 🖱️ then C/V to copy/paste parts! 📋📥
+                    </p>
+                    <p>
+                        Trapbox has tons more features! 🎛️
+                        Play with buttons and menus to discover! 🧪
+                        Hold Ctrl/Shift while playing to record slider movements! 📹
+                    </p>
+                    <p>
+						Check out songs people made! 🌟
+                    </p>
+                </section>
+            </main>
+            <aside class="bsky-column">
+				<h2>
+					Shared on Bluesky:
+				</h2>
+				<div>
+					<!-- <a class="bsky-timeline" data-width="300" data-height="2000" data-link-color="#9988ff" data-chrome="noheader nofooter transparent" data-dnt="true" data-theme="dark" href="https://twitter.com/beepboxco?ref_src=twsrc%5Etfw" target="_blank">Songs retweeted by @beepboxco</a> -->
+                    <bsky-embed
+						feed="at://did:plc:mbrx5fkqsdgk5l2dfhygecm6/app.bsky.feed.generator/aaabsv7gjrgl2"
+						mode="dark"
+						link-target="_blank"
+						link-image="false"
+						limit="5"
+						load-more="true"
+						disable-styles="false"
+						custom-styles="a.mt-4.rounded-md.border.border-slate-300.block {display: none;} .flex > div { max-width: 90%; } .whitespace-pre-wrap { word-wrap: break-word;}"
+					  >
+                    </bsky-embed>
+                    <script async>
+                    // only load bsky-embed if it's actually visible
+                    // (the downside of doing this is that you have to manually reload the page to load/unload the library)
+                    if (window.localStorage.getItem("showDescription") != "false") {
+                        const bsky_script = document.createElement("script");
+
+                        bsky_script.src = "https://cdn.jsdelivr.net/npm/bsky-embed@0.2.2/dist/bsky-embed.es.min.js";
+                        bsky_script.type = "module";
+
+                        document.head.appendChild(bsky_script);
+                    }
+                    </script>
+					<!-- <script type="module" src="https://cdn.jsdelivr.net/npm/bsky-embed/dist/bsky-embed.es.js" async></script> -->
+				</div>
+			</aside>
+        </div>
+    </div>
+
+    <!--
+    Instead of loading js beepbox editor interface directly, test for browser support.
+    <script type="text/javascript" src="beepbox_editor.min.js"></script>
+    -->
+    <script type="text/javascript">
+
+        // Randomize display of header
+        // 1-in-9 chance to appear
+
+        const plants = [
+        // jummbox/goldbox plants    
+        "🍂", "🌿", "🌺", "🍃", "🍄", "🍀🌷", "🌈🍂🍁🍀🌷🍄🐲🌈🍃🌺🍄", " 1️⃣3️⃣1️⃣2️⃣",
+        // blubox plants
+        "≽(◕ ᴗ ◕)≼", "≽(ᴗ _ ᴗ)≼", "≽(⌐ _ ⌐)≼", "≽(ᵕ ‿ ᵕ)≼", 
+        // familiarbox plant (there were others, but the code of familiarbox is long gone)
+        // this is a reference to (now outdated?) lore jinx made for one of their projects 
+        "☀️⭐🕒👁️",
+        // suggested by mel, meant to supplement the lack of a worm logo
+        "🪱",
+        // this is from paandorasbox (might have also been present in familiarbox?)
+        " :wackybox:",
+        // plant originally suggested by mel in reference to the "(don't) eat thegubbys" meme. has now been reduced to just the fish emoji
+        "🐟",
+        // blubox desktop plants 
+        "⚡","🔵","💫",
+        // dogebox2 plants 
+        "🍕","🌭","🍔","🍟",
+        // Slarmoo's Box plants
+        "✨","🌈","🌧️","🪨","🐍","🌲","🌳","𓆏","🦀","🍄‍🟫",
+        // LemmBox 
+		"🍋"
+        ];
+
+        if (Math.floor(Math.random() * 9) == 0) {
+            document.getElementById("goldboxPlant").innerHTML = "  " + plants[(Math.floor(Math.random() * plants.length))];  
+        }
+
+        const date = new Date();
+
+        // UB birthday (june 4th)
+        if ((date.getDate() == 4) && date.getMonth() == 5) {
+            document.getElementById("goldboxPlant").innerHTML = "  🎂🎉";  
+        }
+
+        function changeHotdogSize() {
+            var image = document.getElementById('Hotdog');
+            image.width = Math.random() * (750 - 20) + 20;
+            image.height = Math.random() * (499 - 20) + 20;
+        }
+
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|android|ipad|playbook|silk/i.test(navigator.userAgent)) {
+            document.getElementById("introduction").innerHTML = "UltraBox is an online tool for sketching and sharing chiptune melodies. Make sure that your volume is turned up, then press the play button!";
+            document.getElementById("keyboard-instructions").style.display = "none";
+            document.getElementById("mobile-instructions").style.display = "";
+            document.getElementById("bar-editing").innerHTML = "Tap the boxes to move to a different part of the song, or tap on the currently selected box to swap which pattern is played during that part of the song.";
+			//document.getElementById("offline-instructions").innerHTML = 'You can use UltraBox when your device is offline if you put a shortcut to UltraBox on your home screen. <ul><li>Chrome: find the "Add to Home Screen" option in the ⋮ menu.</li><li>Firefox: find the "Add Page Shortcut" option in the ⋮ menu.</li><li>Safari: find the "Add to Home Screen" option in the bookmark menu.</li></ul>';
+        }
+
+        function browserHasRequiredFeatures() {
+            "use strict";
+            if (window.AudioContext == undefined && window.webkitAudioContext == undefined) {
+                return false;
+            }
+
+            try {
+                eval("class T {}");
+                eval("const a = () => 0");
+                eval("for (const a of []);");
+            } catch (error) {
+                return false;
+            }
+
+            return true;
+        }
+
+        if (browserHasRequiredFeatures()) {
+            // Go ahead and load js beepbox editor interface:
+            var fileref = document.createElement("script");
+            fileref.setAttribute("type", "text/javascript");
+            fileref.setAttribute("src", "beepbox_editor.min.js");
+            document.head.appendChild(fileref);
+        } else {
+            document.getElementById("beepboxEditorContainer").innerHTML = "Sorry, UltraBox doesn't support your browser. Try a recent version of Chrome, Firefox, Edge, Safari, or Opera.";
+        }
+
+		// If the page was loaded with an old song version that old versions of BeepBox support,
+		// update the links to the old versions so that they'll open the song.
+	    //HEY, ULTRABOX DOESN'T HAVE THESE, WHAT DO WE DO???
+		if (/^#[1-6]/.test(location.hash)) {
+			document.getElementById("linkTo2_3").href += location.hash;
+		}
+		if (/^#[1-8]/.test(location.hash)) {
+			document.getElementById("linkTo3_0").href += location.hash;
+		}
+    </script>
+</body>
+</html>
